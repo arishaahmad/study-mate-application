@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:studymate/widgets/signup_form_widget.dart';
+import 'package:studymate/widgets/signup_form_widget.dart'; // CORRECTED IMPORT PATH
 
 class SignUpScreen extends StatelessWidget {
   const SignUpScreen({super.key});
@@ -13,7 +13,7 @@ class SignUpScreen extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
         ),
         centerTitle: true,
-        // This will be the deep red color from main.dart
+        // This pulls the deep red color from main.dart
         backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
         elevation: 4,
@@ -22,7 +22,8 @@ class SignUpScreen extends StatelessWidget {
         // Subtle light red/pink to white gradient
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Colors.red.shade50, Colors.white],
+            // Use colors based on the red primary color
+            colors: [Theme.of(context).primaryColor.withOpacity(0.05), Colors.white],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
