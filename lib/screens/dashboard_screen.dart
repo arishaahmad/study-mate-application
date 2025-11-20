@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:studymate/screens/signup_screen.dart';
-import 'package:studymate/screens/pomodoro_timer_screen.dart'; // NEW: Import the Pomodoro Screen
+import 'package:studymate/screens/pomodoro_timer_screen.dart';
+import 'package:studymate/screens/todo_list_screen.dart'; // NEW: Import the ToDo List Screen
 
 // Get the Supabase client instance (initialized in main.dart)
 final supabase = Supabase.instance.client;
@@ -110,7 +111,7 @@ class DashboardScreen extends StatelessWidget {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(), // Important for SingleChildScrollView
               children: [
-                // NEW: Pomodoro Timer Card
+                // Pomodoro Timer Card
                 _buildFeatureCard(
                   context,
                   title: 'Pomodoro Timer',
@@ -123,16 +124,15 @@ class DashboardScreen extends StatelessWidget {
                   },
                 ),
 
-                // Placeholder for future features (e.g., To-Do List)
+                // UPDATED: To-Do List Card
                 _buildFeatureCard(
                   context,
                   title: 'To-Do List',
                   icon: Icons.checklist,
-                  color: Colors.blueGrey,
+                  color: Colors.blue.shade700, // Using blue for differentiation
                   onTap: () {
-                    // Placeholder navigation for future screen
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('To-Do List feature coming soon!')),
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (context) => const ToDoListScreen()),
                     );
                   },
                 ),
