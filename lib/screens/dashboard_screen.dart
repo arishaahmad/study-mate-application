@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:studymate/screens/signup_screen.dart';
 import 'package:studymate/screens/pomodoro_timer_screen.dart';
-import 'package:studymate/screens/todo_list_screen.dart'; // NEW: Import the ToDo List Screen
+import 'package:studymate/screens/todo_list_screen.dart';
+import 'package:studymate/screens/schedule_screen.dart'; // --- RE-ADDED IMPORT ---
 
 // Get the Supabase client instance (initialized in main.dart)
 final supabase = Supabase.instance.client;
@@ -111,7 +112,7 @@ class DashboardScreen extends StatelessWidget {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(), // Important for SingleChildScrollView
               children: [
-                // Pomodoro Timer Card
+                // 1. Pomodoro Timer Card
                 _buildFeatureCard(
                   context,
                   title: 'Pomodoro Timer',
@@ -124,12 +125,25 @@ class DashboardScreen extends StatelessWidget {
                   },
                 ),
 
-                // UPDATED: To-Do List Card
+                // 2. Class Schedule Card (RE-ADDED)
+                _buildFeatureCard(
+                  context,
+                  title: 'Class Schedule',
+                  icon: Icons.calendar_month_outlined,
+                  color: Colors.teal, // Distinct Green/Teal color
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (context) => const ScheduleScreen()),
+                    );
+                  },
+                ),
+
+                // 3. To-Do List Card
                 _buildFeatureCard(
                   context,
                   title: 'To-Do List',
                   icon: Icons.checklist,
-                  color: Colors.blue.shade700, // Using blue for differentiation
+                  color: Colors.blue.shade700,
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(builder: (context) => const ToDoListScreen()),
