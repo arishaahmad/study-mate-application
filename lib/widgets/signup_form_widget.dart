@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:studymate/screens/dashboard_screen.dart'; // NEW: Import the Dashboard Screen
+import 'package:studymate/screens/dashboard_screen.dart'; // Import the Dashboard Screen
 
 class SignUpFormWidget extends StatefulWidget {
   const SignUpFormWidget({super.key});
@@ -209,12 +209,7 @@ class _SignUpFormWidgetState extends State<SignUpFormWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          const Text(
-            'Welcome! Please provide your details to get started.',
-            style: TextStyle(fontSize: 18, color: Colors.black54),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
+          // The welcome message was removed from here.
 
           // 1. Full Name Input
           _buildTextField(
