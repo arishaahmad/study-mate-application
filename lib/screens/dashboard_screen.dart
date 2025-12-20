@@ -5,7 +5,8 @@ import 'package:studymate/screens/pomodoro_timer_screen.dart';
 import 'package:studymate/screens/todo_list_screen.dart';
 import 'package:studymate/screens/schedule_screen.dart';
 import 'package:studymate/screens/profile_screen.dart';
-import 'package:studymate/screens/help_forum.dart'; // <--- ADDED THIS IMPORT
+import 'package:studymate/screens/help_forum.dart';
+import 'package:studymate/screens/inbox_screen.dart'; // <--- NEW IMPORT
 
 final supabase = Supabase.instance.client;
 
@@ -21,7 +22,7 @@ class DashboardScreen extends StatelessWidget {
     };
   }
 
-  // --- YOUR NEW PROFILE HEADER ---
+  // --- HEADER: LARGE & PROMINENT ---
   Widget _buildProfileHeader(BuildContext context) {
     final userData = _getUserData();
     final primaryColor = Theme.of(context).primaryColor;
@@ -66,7 +67,7 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  // --- YOUR NEW SMALLER CARD DESIGN ---
+  // --- TOOLS: SMALLER & COMPACT ---
   Widget _buildSmallFeatureCard(
       BuildContext context, {
         required String title,
@@ -113,7 +114,7 @@ class DashboardScreen extends StatelessWidget {
 
     return Scaffold(
       body: Container(
-        // --- YOUR NEW BACKGROUND GRADIENT ---
+        // --- PAGE GRADIENT THEME ---
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [Colors.white, primaryColor.withOpacity(0.05), primaryColor.withOpacity(0.1)],
@@ -145,6 +146,7 @@ class DashboardScreen extends StatelessWidget {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   children: [
+                    // 1. Pomodoro
                     _buildSmallFeatureCard(
                       context,
                       title: 'Pomodoro',
@@ -152,6 +154,7 @@ class DashboardScreen extends StatelessWidget {
                       gradientColors: [Colors.orangeAccent, Colors.redAccent],
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PomodoroTimerScreen())),
                     ),
+                    // 2. Schedule
                     _buildSmallFeatureCard(
                       context,
                       title: 'Schedule',
@@ -159,6 +162,7 @@ class DashboardScreen extends StatelessWidget {
                       gradientColors: [Colors.tealAccent.shade700, Colors.teal],
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ScheduleScreen())),
                     ),
+                    // 3. Tasks
                     _buildSmallFeatureCard(
                       context,
                       title: 'Tasks',
@@ -166,13 +170,21 @@ class DashboardScreen extends StatelessWidget {
                       gradientColors: [Colors.blueAccent, Colors.indigo],
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ToDoListScreen())),
                     ),
-                    // --- I ADDED THIS 4TH CARD FOR THE FORUM ---
+                    // 4. Help Forum
                     _buildSmallFeatureCard(
                       context,
                       title: 'Help Forum',
                       icon: Icons.live_help_rounded,
                       gradientColors: [Colors.purpleAccent, Colors.deepPurple],
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const HelpForumScreen())),
+                    ),
+                    // 5. Inbox (NEW)
+                    _buildSmallFeatureCard(
+                      context,
+                      title: 'My Inbox',
+                      icon: Icons.mail_outline_rounded,
+                      gradientColors: [Colors.pinkAccent, Colors.purpleAccent],
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const InboxScreen())),
                     ),
                   ],
                 ),

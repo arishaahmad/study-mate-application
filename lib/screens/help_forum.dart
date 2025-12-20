@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-// REMOVED: import 'package:timeago/timeago.dart' as timeago;
+import 'package:studymate/screens/chat_screen.dart';
 
 class HelpForumScreen extends StatefulWidget {
   const HelpForumScreen({super.key});
@@ -11,7 +11,6 @@ class HelpForumScreen extends StatefulWidget {
 
 class _HelpForumScreenState extends State<HelpForumScreen> {
   final supabase = Supabase.instance.client;
-
   String? _myDepartment;
   bool _isLoadingProfile = true;
 
@@ -35,6 +34,61 @@ class _HelpForumScreenState extends State<HelpForumScreen> {
     }
   }
 
+  // --- DELETE FUNCTION ---
+  Future<void> _deleteRequest(String id) async {
+    try {
+      await supabase.from('help_requests').delete().eq('id', id);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Request deleted.")));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+    }
+  }
+
+  // --- START CHAT FUNCTION ---
+  Future<void> _startChat(String requestId, String ownerId) async {
+    final myId = supabase.auth.currentUser?.id;
+    if (myId == null) return;
+
+    try {
+      // 1. Check if conversation exists
+      final existing = await supabase
+          .from('conversations')
+          .select()
+          .eq('request_id', requestId)
+          .eq('user_b', myId) // Assuming I am the helper (User B)
+          .maybeSingle();
+
+      String conversationId;
+
+      if (existing != null) {
+        conversationId = existing['id'];
+      } else {
+        // 2. Create new conversation
+        final newConvo = await supabase.from('conversations').insert({
+          'request_id': requestId,
+          'user_a': ownerId, // Owner
+          'user_b': myId,    // Me (Helper)
+          'last_message': 'Chat started'
+        }).select().single();
+        conversationId = newConvo['id'];
+      }
+
+      // 3. Navigate
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChatScreen(conversationId: conversationId, otherUserName: "Student"),
+          ),
+        );
+      }
+
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error starting chat: $e")));
+    }
+  }
+
+  // Stream logic...
   Stream<List<Map<String, dynamic>>> _getHelpRequestsStream() {
     return supabase
         .from('help_requests')
@@ -43,11 +97,11 @@ class _HelpForumScreenState extends State<HelpForumScreen> {
         .map((data) => data.cast<Map<String, dynamic>>());
   }
 
+  // Post logic...
   Future<void> _postRequest(String course, String title, String desc) async {
     try {
       final user = supabase.auth.currentUser;
       if (user == null) return;
-
       final deptTag = _myDepartment ?? 'General';
 
       await supabase.from('help_requests').insert({
@@ -59,9 +113,7 @@ class _HelpForumScreenState extends State<HelpForumScreen> {
       });
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
-      }
+      // Error handling
     }
   }
 
@@ -78,23 +130,9 @@ class _HelpForumScreenState extends State<HelpForumScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text("Posting as: ${_myDepartment ?? 'Student'}", style: const TextStyle(fontSize: 12, color: Colors.grey)),
-              const SizedBox(height: 10),
-              TextField(
-                controller: courseController,
-                decoration: const InputDecoration(labelText: "Course Code (e.g. CNG 465)", border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(labelText: "Subject / Title", border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: descController,
-                maxLines: 3,
-                decoration: const InputDecoration(labelText: "Details (Optional)", border: OutlineInputBorder()),
-              ),
+              TextField(controller: courseController, decoration: const InputDecoration(labelText: "Course Code")),
+              TextField(controller: titleController, decoration: const InputDecoration(labelText: "Subject / Title")),
+              TextField(controller: descController, decoration: const InputDecoration(labelText: "Details")),
             ],
           ),
         ),
@@ -102,12 +140,11 @@ class _HelpForumScreenState extends State<HelpForumScreen> {
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
           ElevatedButton(
             onPressed: () {
-              if (courseController.text.isNotEmpty && titleController.text.isNotEmpty) {
+              if (courseController.text.isNotEmpty) {
                 _postRequest(courseController.text, titleController.text, descController.text);
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).primaryColor),
-            child: const Text("Post Request"),
+            child: const Text("Post"),
           ),
         ],
       ),
@@ -117,6 +154,7 @@ class _HelpForumScreenState extends State<HelpForumScreen> {
   @override
   Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).primaryColor;
+    final myId = supabase.auth.currentUser?.id;
 
     return Scaffold(
       appBar: AppBar(
@@ -135,45 +173,22 @@ class _HelpForumScreenState extends State<HelpForumScreen> {
           : StreamBuilder<List<Map<String, dynamic>>>(
         stream: _getHelpRequestsStream(),
         builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(child: Text("Error: ${snapshot.error}"));
-          }
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator(color: primaryColor));
-          }
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          final posts = snapshot.data!;
 
-          final posts = snapshot.data ?? [];
-
-          if (posts.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.forum_outlined, size: 80, color: Colors.grey.shade300),
-                  const SizedBox(height: 10),
-                  const Text("No help requests yet.", style: TextStyle(color: Colors.grey)),
-                  const Text("Be the first to ask!", style: TextStyle(color: Colors.grey)),
-                ],
-              ),
-            );
-          }
+          if (posts.isEmpty) return const Center(child: Text("No posts yet."));
 
           return ListView.builder(
             padding: const EdgeInsets.all(12),
             itemCount: posts.length,
             itemBuilder: (context, index) {
               final post = posts[index];
-
-              // --- UPDATED DATE LOGIC (NO PACKAGE) ---
-              // Just show the date part (YYYY-MM-DD)
-              final String dateStr = post['created_at'].toString().split('T')[0];
-
-              final postDept = post['department'] ?? 'General';
+              final ownerId = post['user_id'];
+              final isMyPost = ownerId == myId;
+              final dateStr = post['created_at'].toString().split('T')[0];
 
               return Card(
-                elevation: 2,
                 margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -182,36 +197,30 @@ class _HelpForumScreenState extends State<HelpForumScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              Chip(
-                                label: Text(post['course_code'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                                backgroundColor: Colors.blue.shade50,
-                                labelPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: -4),
-                                visualDensity: VisualDensity.compact,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(postDept, style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontStyle: FontStyle.italic)),
-                            ],
-                          ),
-                          Text(
-                            dateStr,
-                            style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-                          ),
+                          Chip(label: Text(post['course_code']), visualDensity: VisualDensity.compact),
+                          if (isMyPost)
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () => _deleteRequest(post['id']),
+                            ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        post['title'],
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryColor),
+                      Text(post['title'], style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryColor)),
+                      Text(post['description'] ?? "", style: const TextStyle(fontSize: 14)),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(dateStr, style: const TextStyle(color: Colors.grey)),
+                          if (!isMyPost)
+                            ElevatedButton.icon(
+                              onPressed: () => _startChat(post['id'], ownerId),
+                              icon: const Icon(Icons.chat, size: 16),
+                              label: const Text("Message"),
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                            ),
+                        ],
                       ),
-                      if (post['description'] != null && post['description'].toString().isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          post['description'],
-                          style: const TextStyle(fontSize: 14, color: Colors.black87),
-                        ),
-                      ],
                     ],
                   ),
                 ),
