@@ -38,24 +38,30 @@ class _HelpForumScreenState extends State<HelpForumScreen> {
   Future<void> _deleteRequest(String id) async {
     try {
       await supabase.from('help_requests').delete().eq('id', id);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Request deleted.")));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Request deleted. Chats will be saved.")));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
     }
   }
 
-  // --- START CHAT FUNCTION ---
-  Future<void> _startChat(String requestId, String ownerId) async {
+  // --- START CHAT FUNCTION (UPDATED) ---
+  Future<void> _startChat(String requestId, String ownerId, String courseCode) async {
     final myId = supabase.auth.currentUser?.id;
     if (myId == null) return;
 
+    // Prevent chatting with yourself
+    if (ownerId == myId) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("You cannot chat with yourself.")));
+      return;
+    }
+
     try {
-      // 1. Check if conversation exists
+      // 1. Check if conversation already exists
       final existing = await supabase
           .from('conversations')
           .select()
           .eq('request_id', requestId)
-          .eq('user_b', myId) // Assuming I am the helper (User B)
+          .eq('user_b', myId)
           .maybeSingle();
 
       String conversationId;
@@ -63,11 +69,12 @@ class _HelpForumScreenState extends State<HelpForumScreen> {
       if (existing != null) {
         conversationId = existing['id'];
       } else {
-        // 2. Create new conversation
+        // 2. Create new conversation AND SAVE THE TOPIC
         final newConvo = await supabase.from('conversations').insert({
           'request_id': requestId,
-          'user_a': ownerId, // Owner
-          'user_b': myId,    // Me (Helper)
+          'user_a': ownerId,
+          'user_b': myId,
+          'topic': 'Chat: $courseCode', // <--- This saves the context permanently!
           'last_message': 'Chat started'
         }).select().single();
         conversationId = newConvo['id'];
@@ -88,7 +95,7 @@ class _HelpForumScreenState extends State<HelpForumScreen> {
     }
   }
 
-  // Stream logic...
+  // Stream logic
   Stream<List<Map<String, dynamic>>> _getHelpRequestsStream() {
     return supabase
         .from('help_requests')
@@ -97,7 +104,7 @@ class _HelpForumScreenState extends State<HelpForumScreen> {
         .map((data) => data.cast<Map<String, dynamic>>());
   }
 
-  // Post logic...
+  // Post logic
   Future<void> _postRequest(String course, String title, String desc) async {
     try {
       final user = supabase.auth.currentUser;
@@ -113,7 +120,7 @@ class _HelpForumScreenState extends State<HelpForumScreen> {
       });
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      // Error handling
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error posting: $e")));
     }
   }
 
@@ -130,9 +137,9 @@ class _HelpForumScreenState extends State<HelpForumScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(controller: courseController, decoration: const InputDecoration(labelText: "Course Code")),
+              TextField(controller: courseController, decoration: const InputDecoration(labelText: "Course Code (e.g. CNG 465)")),
               TextField(controller: titleController, decoration: const InputDecoration(labelText: "Subject / Title")),
-              TextField(controller: descController, decoration: const InputDecoration(labelText: "Details")),
+              TextField(controller: descController, decoration: const InputDecoration(labelText: "Details (Optional)")),
             ],
           ),
         ),
@@ -140,10 +147,11 @@ class _HelpForumScreenState extends State<HelpForumScreen> {
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
           ElevatedButton(
             onPressed: () {
-              if (courseController.text.isNotEmpty) {
+              if (courseController.text.isNotEmpty && titleController.text.isNotEmpty) {
                 _postRequest(courseController.text, titleController.text, descController.text);
               }
             },
+            style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).primaryColor),
             child: const Text("Post"),
           ),
         ],
@@ -173,10 +181,14 @@ class _HelpForumScreenState extends State<HelpForumScreen> {
           : StreamBuilder<List<Map<String, dynamic>>>(
         stream: _getHelpRequestsStream(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-          final posts = snapshot.data!;
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator(color: primaryColor));
+          }
+          final posts = snapshot.data ?? [];
 
-          if (posts.isEmpty) return const Center(child: Text("No posts yet."));
+          if (posts.isEmpty) {
+            return Center(child: Text("No help requests yet.", style: TextStyle(color: Colors.grey.shade600)));
+          }
 
           return ListView.builder(
             padding: const EdgeInsets.all(12),
@@ -185,6 +197,8 @@ class _HelpForumScreenState extends State<HelpForumScreen> {
               final post = posts[index];
               final ownerId = post['user_id'];
               final isMyPost = ownerId == myId;
+
+              // Standard Date Formatting (No extra packages needed)
               final dateStr = post['created_at'].toString().split('T')[0];
 
               return Card(
@@ -197,16 +211,24 @@ class _HelpForumScreenState extends State<HelpForumScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Chip(label: Text(post['course_code']), visualDensity: VisualDensity.compact),
+                          Chip(
+                              label: Text(post['course_code'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                              visualDensity: VisualDensity.compact
+                          ),
                           if (isMyPost)
                             IconButton(
                               icon: const Icon(Icons.delete, color: Colors.red),
                               onPressed: () => _deleteRequest(post['id']),
+                              tooltip: "Delete Request",
                             ),
                         ],
                       ),
+                      const SizedBox(height: 5),
                       Text(post['title'], style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryColor)),
-                      Text(post['description'] ?? "", style: const TextStyle(fontSize: 14)),
+                      if (post['description'] != null) ...[
+                        const SizedBox(height: 5),
+                        Text(post['description'], style: const TextStyle(fontSize: 14)),
+                      ],
                       const SizedBox(height: 10),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -214,7 +236,8 @@ class _HelpForumScreenState extends State<HelpForumScreen> {
                           Text(dateStr, style: const TextStyle(color: Colors.grey)),
                           if (!isMyPost)
                             ElevatedButton.icon(
-                              onPressed: () => _startChat(post['id'], ownerId),
+                              // Pass the course code here to save it as the Topic
+                              onPressed: () => _startChat(post['id'], ownerId, post['course_code']),
                               icon: const Icon(Icons.chat, size: 16),
                               label: const Text("Message"),
                               style: ElevatedButton.styleFrom(backgroundColor: Colors.green),

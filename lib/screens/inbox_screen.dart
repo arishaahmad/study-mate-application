@@ -14,13 +14,12 @@ class _InboxScreenState extends State<InboxScreen> {
 
   Stream<List<Map<String, dynamic>>> _getConversations() {
     final myId = supabase.auth.currentUser?.id;
-    // We fetch conversations where I am either user_a OR user_b
+    // Fetch conversations where I am User A OR User B
     return supabase
         .from('conversations')
         .stream(primaryKey: ['id'])
         .order('updated_at', ascending: false)
         .map((data) {
-      // Filter manually since Supabase Stream query limitations
       return data.where((c) => c['user_a'] == myId || c['user_b'] == myId).toList().cast<Map<String, dynamic>>();
     });
   }
@@ -52,21 +51,32 @@ class _InboxScreenState extends State<InboxScreen> {
             itemCount: convos.length,
             itemBuilder: (context, index) {
               final c = convos[index];
-              // Determine if I am User A or User B, to show "Student" as the other person
               final isUserA = c['user_a'] == myId;
               final otherLabel = isUserA ? "Helper" : "Requester";
 
               return ListTile(
-                leading: CircleAvatar(backgroundColor: primaryColor.withOpacity(0.1), child: const Icon(Icons.person)),
-                title: Text("Chat with $otherLabel"),
-                subtitle: Text(c['last_message'] ?? "Start chatting...", maxLines: 1, overflow: TextOverflow.ellipsis),
+                leading: CircleAvatar(
+                    backgroundColor: primaryColor.withOpacity(0.1),
+                    child: const Icon(Icons.chat_bubble_outline)
+                ),
+                // DISPLAY THE SAVED TOPIC
+                // If the Request was deleted, this 'topic' text persists!
+                title: Text(
+                  c['topic'] ?? "Chat with $otherLabel",
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text(
+                    c['last_message'] ?? "Start chatting...",
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis
+                ),
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => ChatScreen(
                         conversationId: c['id'],
-                        otherUserName: otherLabel,
+                        otherUserName: c['topic'] ?? otherLabel,
                       ),
                     ),
                   );
