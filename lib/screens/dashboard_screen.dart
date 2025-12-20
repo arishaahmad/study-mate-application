@@ -6,7 +6,9 @@ import 'package:studymate/screens/todo_list_screen.dart';
 import 'package:studymate/screens/schedule_screen.dart';
 import 'package:studymate/screens/profile_screen.dart';
 import 'package:studymate/screens/help_forum.dart';
-import 'package:studymate/screens/inbox_screen.dart'; // <--- NEW IMPORT
+import 'package:studymate/screens/inbox_screen.dart';
+
+import 'notes_taking_screen.dart'; // <--- NEW IMPORT
 
 final supabase = Supabase.instance.client;
 
@@ -186,6 +188,15 @@ class DashboardScreen extends StatelessWidget {
                       gradientColors: [Colors.pinkAccent, Colors.purpleAccent],
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const InboxScreen())),
                     ),
+
+                    _buildSmallFeatureCard(
+                      context,
+                      title: 'Note Taking',
+                      icon: Icons.auto_stories_rounded,
+                      gradientColors: [Colors.purple, Colors.deepPurpleAccent],
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const NotesTakingScreen())),
+                    ),
+
                   ],
                 ),
 
