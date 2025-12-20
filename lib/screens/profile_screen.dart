@@ -9,61 +9,68 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // Access the client initialized in main.dart
   final supabase = Supabase.instance.client;
-
   bool _isLoading = true;
 
-  // User details (View Only)
+  // User details from 'profiles' table
   String _fullName = '';
   String _email = '';
   String _department = '';
   String _year = '';
 
-  // List of unique course codes derived from the schedule
+  // Course codes from 'schedules' table
   List<String> _enrolledCourses = [];
 
   @override
   void initState() {
     super.initState();
-    _fetchProfileData();
+    _fetchCompleteProfile();
   }
 
-  /// Fetches User Metadata and Schedule Data
-  Future<void> _fetchProfileData() async {
+  Future<void> _fetchCompleteProfile() async {
     try {
       final user = supabase.auth.currentUser;
       if (user == null) return;
 
-      // 1. Fetch unique courses from the 'schedules' table
+      // 1. Fetch User Info from the 'profiles' table
+      // Based on your screenshot, columns are: id, full_name, department, year
+      final profileResponse = await supabase
+          .from('profiles')
+          .select('full_name, department, year')
+          .eq('id', user.id)
+          .single();
+
+      // 2. Fetch Course Codes from the 'schedules' table
+      // Your screenshot shows the column is 'course_code', NOT 'code'
       final scheduleResponse = await supabase
           .from('schedules')
           .select('course_code')
           .eq('user_id', user.id);
 
-      // Extract codes and remove duplicates to show a clean "Course List"
-      final List<dynamic> data = scheduleResponse;
+      final List<dynamic> scheduleData = scheduleResponse;
       final Set<String> uniqueCodes = {};
 
-      for (var item in data) {
-        if (item['course_code'] != null && item['course_code'].toString().isNotEmpty) {
+      for (var item in scheduleData) {
+        if (item['course_code'] != null) {
           uniqueCodes.add(item['course_code'].toString());
         }
       }
 
       if (mounted) {
         setState(() {
-          // Load basic user info from Auth Metadata
           _email = user.email ?? '';
-          _fullName = user.userMetadata?['full_name'] ?? 'Student';
-          _department = user.userMetadata?['department'] ?? 'Not Set';
-          _year = user.userMetadata?['year'] ?? 'Not Set';
+
+          // Using .toString() handles the 'int2' error for 'year'
+          _fullName = (profileResponse['full_name'] ?? 'Student').toString();
+          _department = (profileResponse['department'] ?? 'Not Set').toString();
+          _year = (profileResponse['year'] ?? 'N/A').toString();
 
           _enrolledCourses = uniqueCodes.toList();
           _isLoading = false;
         });
       }
     } catch (e) {
+      debugPrint("Error loading profile: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading profile: $e')),
@@ -83,14 +90,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         backgroundColor: primaryColor,
         foregroundColor: Colors.white,
         centerTitle: true,
-        // No Actions (Save button removed)
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator(color: primaryColor))
           : SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(24.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // --- PROFILE HEADER ---
             CircleAvatar(
@@ -102,135 +107,89 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            Text(
-              _fullName,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              _email,
-              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-            ),
-            const SizedBox(height: 30),
+            Text(_fullName, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            Text(_email, style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
 
-            // --- ACADEMIC DETAILS SECTION ---
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                "Academic Details",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryColor),
-              ),
-            ),
-            const Divider(),
-            const SizedBox(height: 10),
+            const SizedBox(height: 32),
 
-            // Read-Only Info Cards
+            // --- ACADEMIC DETAILS ---
+            _buildSectionHeader(primaryColor, "Academic Info"),
             _buildInfoCard(Icons.school, "Department", _department),
-            const SizedBox(height: 10),
-            _buildInfoCard(Icons.calendar_today, "Year", _year),
+            const SizedBox(height: 12),
+            _buildInfoCard(Icons.calendar_today, "Year", "Year $_year"),
 
-            const SizedBox(height: 30),
+            const SizedBox(height: 32),
 
-            // --- ENROLLED COURSES SECTION ---
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                "My Courses",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryColor),
-              ),
-            ),
-            const Divider(),
-            const SizedBox(height: 10),
-
+            // --- ENROLLED COURSES ---
+            _buildSectionHeader(primaryColor, "Enrolled Courses"),
             if (_enrolledCourses.isEmpty)
-              Container(
-                padding: const EdgeInsets.all(20),
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  children: [
-                    Icon(Icons.class_outlined, size: 40, color: Colors.grey.shade400),
-                    const SizedBox(height: 8),
-                    const Text(
-                      "No courses found in schedule.",
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  ],
-                ),
-              )
+              _buildEmptyCourses()
             else
-            // Displays courses as a list of chips
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Wrap(
-                  spacing: 8.0,
-                  runSpacing: 8.0,
-                  children: _enrolledCourses.map((code) {
-                    return Chip(
-                      avatar: CircleAvatar(
-                        backgroundColor: Colors.white.withOpacity(0.3),
-                        child: const Icon(Icons.book, size: 14, color: Colors.white),
-                      ),
-                      label: Text(
-                        code,
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
-                      backgroundColor: primaryColor.withOpacity(0.8),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    );
-                  }).toList(),
-                ),
-              ),
+              _buildCourseGrid(primaryColor),
           ],
         ),
       ),
     );
   }
 
-  // Helper widget to build consistent info rows
+  // --- UI COMPONENTS ---
+
+  Widget _buildSectionHeader(Color color, String title) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
+        ),
+        const Divider(),
+        const SizedBox(height: 12),
+      ],
+    );
+  }
+
   Widget _buildInfoCard(IconData icon, String label, String value) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(15),
         border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 5,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: Theme.of(context).primaryColor),
-          ),
+          Icon(icon, color: Theme.of(context).primaryColor),
           const SizedBox(width: 16),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                label,
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                value.isNotEmpty ? value : "Not specified",
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
-              ),
+              Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyCourses() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 20),
+      child: Text("No courses found in your schedule.", style: TextStyle(color: Colors.grey)),
+    );
+  }
+
+  Widget _buildCourseGrid(Color color) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: _enrolledCourses.map((code) => Chip(
+          label: Text(code, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          backgroundColor: color.withOpacity(0.8),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+        )).toList(),
       ),
     );
   }
