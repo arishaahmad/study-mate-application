@@ -5,6 +5,40 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+// --- PAPER TEXTURE PAINTER ---
+enum PaperType { blank, lines, squared }
+
+class PaperPainter extends CustomPainter {
+  final PaperType type;
+  PaperPainter(this.type);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (type == PaperType.blank) return;
+
+    final paint = Paint()
+      ..color = Colors.red.withOpacity(0.1) // Reddish lines to match theme
+      ..strokeWidth = 1.0;
+
+    if (type == PaperType.lines) {
+      for (double i = 30; i < size.height; i += 28) {
+        canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);
+      }
+    } else if (type == PaperType.squared) {
+      double step = 25.0;
+      for (double i = 0; i < size.width; i += step) {
+        canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
+      }
+      for (double i = 0; i < size.height; i += step) {
+        canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 class NotesTakingScreen extends StatefulWidget {
   const NotesTakingScreen({super.key});
 
@@ -19,10 +53,11 @@ class _NotesTakingScreenState extends State<NotesTakingScreen> {
 
   List<Map<String, dynamic>> _notes = [];
   bool _isLoading = true;
-
-  // Use File? for Android
   File? _selectedFile;
   String? _selectedFileType;
+
+  // Default Paper Style
+  PaperType _currentPaperStyle = PaperType.lines;
 
   @override
   void initState() {
@@ -34,148 +69,130 @@ class _NotesTakingScreenState extends State<NotesTakingScreen> {
     try {
       final user = supabase.auth.currentUser;
       if (user == null) return;
-
-      final data = await supabase
-          .from('notes')
-          .select()
-          .eq('user_id', user.id)
-          .order('created_at', ascending: false);
-
-      setState(() {
-        _notes = List<Map<String, dynamic>>.from(data);
-        _isLoading = false;
-      });
+      final data = await supabase.from('notes').select().eq('user_id', user.id).order('created_at', ascending: false);
+      setState(() { _notes = List<Map<String, dynamic>>.from(data); _isLoading = false; });
     } catch (e) {
       setState(() => _isLoading = false);
     }
   }
 
-  // --- ANDROID OPTIMIZED PICKERS ---
+  // --- ACTIONS ---
 
   Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final image = await picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      setState(() {
-        _selectedFile = File(image.path); // Works on Android
-        _selectedFileType = 'image';
-      });
-    }
+    final image = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (image != null) setState(() { _selectedFile = File(image.path); _selectedFileType = 'image'; });
   }
 
   Future<void> _pickPDF() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['pdf'],
-    );
+    FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['pdf']);
+    if (result != null) setState(() { _selectedFile = File(result.files.single.path!); _selectedFileType = 'pdf'; });
+  }
 
-    if (result != null && result.files.single.path != null) {
-      setState(() {
-        _selectedFile = File(result.files.single.path!); // Works on Android
-        _selectedFileType = 'pdf';
-      });
-    }
+  Future<void> _deleteNote(dynamic id) async {
+    await supabase.from('notes').delete().eq('id', id);
+    Navigator.pop(context); // Close detail view
+    _fetchNotes();
   }
 
   Future<void> _saveNote() async {
     if (_titleController.text.isEmpty) return;
+    setState(() => _isLoading = true);
+    String? fileUrl;
 
-    try {
-      setState(() => _isLoading = true);
-      String? fileUrl;
-
-      if (_selectedFile != null) {
-        // Create a unique name for the file
-        final extension = _selectedFileType == 'pdf' ? 'pdf' : 'jpg';
-        final fileName = '${DateTime.now().millisecondsSinceEpoch}.$extension';
-        final path = 'uploads/$fileName';
-
-        // Upload the file from the Android path
-        await supabase.storage.from('note-attachments').upload(path, _selectedFile!);
-        fileUrl = supabase.storage.from('note-attachments').getPublicUrl(path);
-      }
-
-      final user = supabase.auth.currentUser;
-      await supabase.from('notes').insert({
-        'user_id': user!.id,
-        'title': _titleController.text,
-        'content': _contentController.text,
-        'file_url': fileUrl,
-        'file_type': _selectedFileType,
-      });
-
-      _titleController.clear();
-      _contentController.clear();
-      setState(() { _selectedFile = null; _selectedFileType = null; });
-      Navigator.pop(context);
-      _fetchNotes();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
-      setState(() => _isLoading = false);
+    if (_selectedFile != null) {
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}';
+      final path = 'uploads/$fileName';
+      await supabase.storage.from('note-attachments').upload(path, _selectedFile!);
+      fileUrl = supabase.storage.from('note-attachments').getPublicUrl(path);
     }
+
+    await supabase.from('notes').insert({
+      'user_id': supabase.auth.currentUser!.id,
+      'title': _titleController.text,
+      'content': _contentController.text,
+      'file_url': fileUrl,
+      'file_type': _selectedFileType,
+    });
+
+    _titleController.clear(); _contentController.clear();
+    setState(() { _selectedFile = null; _selectedFileType = null; });
+    Navigator.pop(context);
+    _fetchNotes();
   }
 
-  // --- UI BUILDING ---
+  // --- VIEWS ---
 
-  void _showNoteEditor() {
-    showModalBottomSheet(
+  void _showNoteDetail(Map<String, dynamic> note) {
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(25))),
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => Padding(
-          padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom,
-              left: 20, right: 20, top: 20
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _titleController,
-                decoration: const InputDecoration(hintText: "Note Title", border: InputBorder.none, hintStyle: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              TextField(
-                controller: _contentController,
-                decoration: const InputDecoration(hintText: "Type your notes here...", border: InputBorder.none),
-                maxLines: 5,
-              ),
-              if (_selectedFile != null)
-                _buildFilePreview(setModalState),
-              const Divider(),
-              Row(
-                children: [
-                  IconButton(icon: const Icon(Icons.add_a_photo_outlined, color: Colors.blue), onPressed: () async { await _pickImage(); setModalState(() {}); }),
-                  IconButton(icon: const Icon(Icons.picture_as_pdf_outlined, color: Colors.red), onPressed: () async { await _pickPDF(); setModalState(() {}); }),
-                  const Spacer(),
-                  ElevatedButton(
-                    onPressed: _saveNote,
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                    child: const Text("Save", style: TextStyle(color: Colors.white)),
-                  )
-                ],
-              ),
-              const SizedBox(height: 15),
+      builder: (context) => Dialog.fullscreen(
+        child: Scaffold(
+          appBar: AppBar(
+            backgroundColor: Colors.red,
+            foregroundColor: Colors.white,
+            title: Text(note['title'] ?? "Note"),
+            actions: [
+              IconButton(icon: const Icon(Icons.delete_forever), onPressed: () => _deleteNote(note['id'])),
             ],
+          ),
+          body: CustomPaint(
+            painter: PaperPainter(_currentPaperStyle),
+            child: Container(
+              width: double.infinity,
+              height: double.infinity,
+              padding: const EdgeInsets.all(20),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (note['file_url'] != null)
+                      _buildAttachmentBtn(note),
+                    const SizedBox(height: 20),
+                    Text(note['content'] ?? "", style: const TextStyle(fontSize: 18, height: 1.6)),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildFilePreview(Function setModalState) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(10)),
-      child: Row(
-        children: [
-          Icon(_selectedFileType == 'image' ? Icons.image : Icons.picture_as_pdf, color: Colors.blue),
-          const SizedBox(width: 10),
-          const Expanded(child: Text("Attachment ready", style: TextStyle(fontSize: 12))),
-          IconButton(icon: const Icon(Icons.cancel), onPressed: () => setModalState(() => _selectedFile = null))
-        ],
+  Widget _buildAttachmentBtn(Map<String, dynamic> note) {
+    return ActionChip(
+      avatar: Icon(note['file_type'] == 'pdf' ? Icons.picture_as_pdf : Icons.image, color: Colors.white, size: 16),
+      label: const Text("Open Attachment", style: TextStyle(color: Colors.white)),
+      backgroundColor: Colors.red,
+      onPressed: () => launchUrl(Uri.parse(note['file_url'])),
+    );
+  }
+
+  void _showNoteEditor() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 20, right: 20, top: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: _titleController, decoration: const InputDecoration(hintText: "Title", border: InputBorder.none, hintStyle: TextStyle(fontWeight: FontWeight.bold))),
+              TextField(controller: _contentController, decoration: const InputDecoration(hintText: "Note body...", border: InputBorder.none), maxLines: 5),
+              if (_selectedFile != null) ListTile(leading: const Icon(Icons.attach_file, color: Colors.red), title: const Text("File attached"), trailing: IconButton(icon: const Icon(Icons.close), onPressed: () => setModalState(() => _selectedFile = null))),
+              Row(
+                children: [
+                  IconButton(icon: const Icon(Icons.image, color: Colors.red), onPressed: () async { await _pickImage(); setModalState(() {}); }),
+                  IconButton(icon: const Icon(Icons.picture_as_pdf, color: Colors.red), onPressed: () async { await _pickPDF(); setModalState(() {}); }),
+                  const Spacer(),
+                  ElevatedButton(onPressed: _saveNote, style: ElevatedButton.styleFrom(backgroundColor: Colors.red), child: const Text("Save", style: TextStyle(color: Colors.white))),
+                ],
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -183,44 +200,59 @@ class _NotesTakingScreenState extends State<NotesTakingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("My Notes")),
+      backgroundColor: const Color(0xFFFCFBF4), // Subtle paper color
+      appBar: AppBar(
+        title: const Text("My Notebook", style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.red,
+        foregroundColor: Colors.white,
+        actions: [
+          PopupMenuButton<PaperType>(
+            icon: const Icon(Icons.layers),
+            onSelected: (val) => setState(() => _currentPaperStyle = val),
+            itemBuilder: (context) => [
+              const PopupMenuItem(value: PaperType.lines, child: Text("Ruled")),
+              const PopupMenuItem(value: PaperType.squared, child: Text("Squared")),
+              const PopupMenuItem(value: PaperType.blank, child: Text("Blank")),
+            ],
+          )
+        ],
+      ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: Colors.red))
           : GridView.builder(
-        padding: const EdgeInsets.all(16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 10, mainAxisSpacing: 10),
+        padding: const EdgeInsets.all(12),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 10, crossAxisSpacing: 10),
         itemCount: _notes.length,
-        itemBuilder: (context, index) => _buildNoteCard(_notes[index]),
+        itemBuilder: (context, index) {
+          final note = _notes[index];
+          return GestureDetector(
+            onTap: () => _showNoteDetail(note),
+            child: Card(
+              elevation: 3,
+              clipBehavior: Clip.antiAlias,
+              child: CustomPaint(
+                painter: PaperPainter(_currentPaperStyle),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(note['title'], style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 1),
+                      const Divider(color: Colors.red, thickness: 1),
+                      Expanded(child: Text(note['content'], style: const TextStyle(fontSize: 12), maxLines: 5)),
+                      if (note['file_url'] != null) const Align(alignment: Alignment.bottomRight, child: Icon(Icons.attachment, size: 14, color: Colors.red)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showNoteEditor,
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: Colors.red,
         child: const Icon(Icons.add, color: Colors.white),
-      ),
-    );
-  }
-
-  Widget _buildNoteCard(Map<String, dynamic> note) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      child: InkWell(
-        onTap: () {
-          if (note['file_url'] != null) launchUrl(Uri.parse(note['file_url']));
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(note['title'], style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 5),
-              Expanded(child: Text(note['content'], style: const TextStyle(fontSize: 12), maxLines: 5, overflow: TextOverflow.ellipsis)),
-              if (note['file_url'] != null)
-                Icon(note['file_type'] == 'image' ? Icons.image : Icons.picture_as_pdf, size: 16, color: Colors.blueGrey),
-            ],
-          ),
-        ),
       ),
     );
   }
