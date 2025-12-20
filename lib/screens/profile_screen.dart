@@ -126,7 +126,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // Read-Only Info Cards
             _buildInfoCard(Icons.school, "Department", _department),
             const SizedBox(height: 10),
-            _buildInfoCard(Icons.calendar_today, "Year / Semester", _year),
+            _buildInfoCard(Icons.calendar_today, "Year", _year),
 
             const SizedBox(height: 30),
 
