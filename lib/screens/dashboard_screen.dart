@@ -4,6 +4,7 @@ import 'package:studymate/screens/signup_screen.dart';
 import 'package:studymate/screens/pomodoro_timer_screen.dart';
 import 'package:studymate/screens/todo_list_screen.dart';
 import 'package:studymate/screens/schedule_screen.dart'; // --- RE-ADDED IMPORT ---
+import 'package:studymate/screens/profile_screen.dart';
 
 // Get the Supabase client instance (initialized in main.dart)
 final supabase = Supabase.instance.client;
@@ -151,6 +152,17 @@ class DashboardScreen extends StatelessWidget {
                   },
                 ),
               ],
+            ),
+            _buildFeatureCard(
+              context,
+              title: 'My Profile',
+              icon: Icons.person_outline,
+              color: Colors.indigo, // A distinct color for the profile
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                );
+              },
             ),
 
             const SizedBox(height: 50),
