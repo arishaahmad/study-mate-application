@@ -14,7 +14,7 @@ class _InboxScreenState extends State<InboxScreen> {
 
   Stream<List<Map<String, dynamic>>> _getConversations() {
     final myId = supabase.auth.currentUser?.id;
-    // Fetch conversations where I am User A OR User B
+    // Fetch conversations where I am involved
     return supabase
         .from('conversations')
         .stream(primaryKey: ['id'])
@@ -22,6 +22,60 @@ class _InboxScreenState extends State<InboxScreen> {
         .map((data) {
       return data.where((c) => c['user_a'] == myId || c['user_b'] == myId).toList().cast<Map<String, dynamic>>();
     });
+  }
+
+  // --- RENAME / SAVE CONTACT FUNCTION ---
+  Future<void> _renameConversation(String conversationId, String currentName) async {
+    final controller = TextEditingController(text: currentName);
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Save Contact Name"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("Give this chat a name so you can remember it easily:"),
+            const SizedBox(height: 10),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: "Chat Name",
+                hintText: "e.g. John - Math Helper",
+                border: OutlineInputBorder(),
+              ),
+              autofocus: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          ElevatedButton(
+            onPressed: () async {
+              if (controller.text.trim().isNotEmpty) {
+                try {
+                  // Update the 'topic' column in Supabase
+                  await supabase
+                      .from('conversations')
+                      .update({'topic': controller.text.trim()})
+                      .eq('id', conversationId);
+
+                  if (mounted) Navigator.pop(ctx);
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Contact saved successfully!")),
+                  );
+                } catch (e) {
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).primaryColor),
+            child: const Text("Save"),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -44,7 +98,16 @@ class _InboxScreenState extends State<InboxScreen> {
           final convos = snapshot.data ?? [];
 
           if (convos.isEmpty) {
-            return const Center(child: Text("No messages yet."));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.mark_chat_unread_outlined, size: 80, color: Colors.grey.shade300),
+                  const SizedBox(height: 10),
+                  const Text("No messages yet.", style: TextStyle(color: Colors.grey)),
+                ],
+              ),
+            );
           }
 
           return ListView.builder(
@@ -52,35 +115,45 @@ class _InboxScreenState extends State<InboxScreen> {
             itemBuilder: (context, index) {
               final c = convos[index];
               final isUserA = c['user_a'] == myId;
-              final otherLabel = isUserA ? "Helper" : "Requester";
+              final defaultLabel = isUserA ? "Helper" : "Requester";
 
-              return ListTile(
-                leading: CircleAvatar(
-                    backgroundColor: primaryColor.withOpacity(0.1),
-                    child: const Icon(Icons.chat_bubble_outline)
-                ),
-                // DISPLAY THE SAVED TOPIC
-                // If the Request was deleted, this 'topic' text persists!
-                title: Text(
-                  c['topic'] ?? "Chat with $otherLabel",
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Text(
-                    c['last_message'] ?? "Start chatting...",
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis
-                ),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ChatScreen(
-                        conversationId: c['id'],
-                        otherUserName: c['topic'] ?? otherLabel,
+              // This is the saved name (Topic) or the default
+              final chatName = c['topic'] ?? "Chat with $defaultLabel";
+
+              return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                child: ListTile(
+                  leading: CircleAvatar(
+                      backgroundColor: primaryColor.withOpacity(0.1),
+                      child: const Icon(Icons.chat_bubble_outline)
+                  ),
+                  title: Text(
+                    chatName,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(
+                      c['last_message'] ?? "Start chatting...",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis
+                  ),
+                  // --- EDIT BUTTON ---
+                  trailing: IconButton(
+                    icon: const Icon(Icons.edit, color: Colors.grey),
+                    onPressed: () => _renameConversation(c['id'], chatName),
+                    tooltip: "Rename / Save Contact",
+                  ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ChatScreen(
+                          conversationId: c['id'],
+                          otherUserName: chatName,
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               );
             },
           );
