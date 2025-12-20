@@ -5,6 +5,7 @@ import 'package:studymate/screens/pomodoro_timer_screen.dart';
 import 'package:studymate/screens/todo_list_screen.dart';
 import 'package:studymate/screens/schedule_screen.dart';
 import 'package:studymate/screens/profile_screen.dart';
+import 'package:studymate/screens/help_forum.dart'; // <--- ADDED THIS IMPORT
 
 final supabase = Supabase.instance.client;
 
@@ -20,7 +21,7 @@ class DashboardScreen extends StatelessWidget {
     };
   }
 
-  // --- HEADER: LARGE & PROMINENT ---
+  // --- YOUR NEW PROFILE HEADER ---
   Widget _buildProfileHeader(BuildContext context) {
     final userData = _getUserData();
     final primaryColor = Theme.of(context).primaryColor;
@@ -65,7 +66,7 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  // --- TOOLS: SMALLER & COMPACT ---
+  // --- YOUR NEW SMALLER CARD DESIGN ---
   Widget _buildSmallFeatureCard(
       BuildContext context, {
         required String title,
@@ -88,12 +89,12 @@ class DashboardScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(10), // Reduced padding for smaller icons
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 gradient: LinearGradient(colors: gradientColors, begin: Alignment.topLeft, end: Alignment.bottomRight),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 24, color: Colors.white), // Smaller icon size
+              child: Icon(icon, size: 24, color: Colors.white),
             ),
             const SizedBox(height: 10),
             Text(
@@ -112,7 +113,7 @@ class DashboardScreen extends StatelessWidget {
 
     return Scaffold(
       body: Container(
-        // --- PAGE GRADIENT THEME ---
+        // --- YOUR NEW BACKGROUND GRADIENT ---
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [Colors.white, primaryColor.withOpacity(0.05), primaryColor.withOpacity(0.1)],
@@ -135,12 +136,12 @@ class DashboardScreen extends StatelessWidget {
                 const Text('Workspace', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
 
-                // --- TOOLS GRID (Smaller height/aspect ratio) ---
+                // --- TOOLS GRID ---
                 GridView.count(
                   crossAxisCount: 2,
                   crossAxisSpacing: 16,
                   mainAxisSpacing: 16,
-                  childAspectRatio: 1.2, // Makes the cards shorter/smaller
+                  childAspectRatio: 1.2,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   children: [
@@ -164,6 +165,14 @@ class DashboardScreen extends StatelessWidget {
                       icon: Icons.check_circle_rounded,
                       gradientColors: [Colors.blueAccent, Colors.indigo],
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ToDoListScreen())),
+                    ),
+                    // --- I ADDED THIS 4TH CARD FOR THE FORUM ---
+                    _buildSmallFeatureCard(
+                      context,
+                      title: 'Help Forum',
+                      icon: Icons.live_help_rounded,
+                      gradientColors: [Colors.purpleAccent, Colors.deepPurple],
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const HelpForumScreen())),
                     ),
                   ],
                 ),
