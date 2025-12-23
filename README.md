@@ -1,96 +1,73 @@
-🎓 StudyMate: Cloud-Based Academic Management System
-StudyMate is a cross-platform mobile application designed to streamline the academic lives of students and teachers at METU-NCC. By integrating scheduling, task management, and collaborative peer-to-peer help forums, StudyMate provides a unified, real-time productivity hub.
+# 🎓 StudyMate: Cloud-Based Academic Management System
 
-📂 Project Structure
+**StudyMate** is a cross-platform mobile application designed to streamline the academic lives of students and teachers at **METU-NCC**. By integrating scheduling, task management, and collaborative peer-to-peer help forums, StudyMate provides a unified, real-time productivity hub.
+
+---
+
+## 📂 Project Structure
 The repository is organized into distinct directories for code, documentation, and assets to maintain a clean development lifecycle.
 
-Plaintext
+```text
 study-mate-application/
 ├── documentation/
 │   ├── proposal/           # Initial Project Proposal
 │   ├── progress/           # Capstone Progress Reports
 │   └── final/              # Final Capstone Technical Report
-├── media/                  # App screenshots, GIFs, and demo videos
+├── media/                  # App screenshots and demo videos
 ├── supabase/               # SQL schema, RLS policies, and Edge Functions
 └── study_mate_app/         # Main Flutter Project
     ├── lib/
-    │   ├── core/           # Common utilities, themes, and constants
     │   ├── features/       # Feature-first modules (Auth, Notes, Forum, etc.)
-    │   ├── models/         # Data models and DTOs
     │   └── services/       # Supabase client and API wrappers
     └── pubspec.yaml        # Flutter dependencies
-🛠 Technology Stack & Metrics
-Core Technologies
 
-Frontend: Flutter (Dart) - Cross-platform UI toolkit.
+Category,Detail,Technical Description & Responsibilities
+Languages,"Dart, SQL, TS",Dart: Frontend (Flutter). SQL: DB Schema. TS: Edge Functions.
+Lines of Code,"~4,000 – 6,000","Total codebase including widgets, logic, and backend scripts."
+Database Type,PostgreSQL,Relational DB (v15+) with Row Level Security (RLS).
+Runtime RAM,120MB – 200MB,Optimized for 60fps performance on Android devices.
+Dev RAM,8GB – 16GB,Required for IDEs and mobile emulators.
+Database Data Types Used
 
-Backend (BaaS): Supabase (PostgreSQL) - Relational data and security.
+UUID: Primary keys for secure user identification.
 
-Authentication: Supabase Auth (JWT-based).
+TEXT / JSONB: Used for notes and complex forum metadata.
 
-Real-time: PostgreSQL Listen/Notify via WebSockets.
+TIMESTAMP: Used for class schedules and to-do deadlines.
 
-Storage: Supabase Storage buckets for PDFs and images.
+BLOB (Storage): URLs for PDF and Image attachments.
 
-Technical Metrics
-
-Metric	Detail
-Programming Languages	Dart (90%), SQL (8%), TypeScript (2%)
-Lines of Code (LOC)	~4,000 – 6,000 lines
-Runtime Memory	120MB – 200MB RAM (Target Android)
-Database Type	PostgreSQL (v15+) with Row Level Security (RLS)
 🚀 Installation & Setup
-Prerequisites
+1. Backend Setup (Supabase)
 
-Flutter SDK: v3.x or higher.
+Create a project at Supabase.com.
 
-Dart: v3.x.
+Run scripts in /supabase/schema.sql to initialize tables.
 
-Supabase Account: Access to a project instance.
+Enable RLS to ensure users can only see their own data.
 
-1. Setup the Backend
+2. Frontend Setup (Flutter)
 
-Create a new project on Supabase.com.
+Clone the repo: git clone https://github.com/arishaahmad/study-mate-application.git
 
-In the SQL Editor, execute the initialization scripts from /supabase/schema.sql to create the following tables:
+Install dependencies: flutter pub get
 
-profiles, todos, schedule, notes, forum_posts.
+Add your URL and Anon Key in lib/main.dart.
 
-Enable Row Level Security (RLS) for all tables to protect user data.
+Run the app: flutter run
 
-2. Setup the Mobile App
-
-Clone the repository:
-
-Bash
-git clone https://github.com/arishaahmad/study-mate-application.git
-cd study_mate_app
-Install dependencies:
-
-Bash
-flutter pub get
-Configure environment variables:
-
-Initialize the Supabase client in lib/main.dart using your Project URL and Anon Key.
-
-3. Run the App
-
-Bash
-flutter run
 👥 Team & Responsibilities
-The project was divided into specialized roles to ensure high-quality full-stack delivery.
+Member	Focus Areas	Key Implementation
+Arisha Ahmad	Backend & Productivity	Supabase Auth, To-Do, Pomodoro, Notes (PDF/Images)
+Faiez Rashid	UI & Collaboration	Dashboard, Help Forum (Real-time), Inbox, Schedule
 
-Arisha Ahmad (2751923)
+📧 Contact
+Arisha Ahmad: [2751923]
+Faiez Rashid: [2460384]
 
-Backend: Initial Supabase infrastructure, database architecture, and RLS policies.
 
-Core Logic: Auth system, To-Do List, Pomodoro Timer, and Notes Module with cloud storage for PDFs/Images.
 
-Faiez Rashid (2460384)
 
-Frontend & UX: Dashboard layout, grid-based navigation, and Profile view.
 
-Collaboration: Help Forum implementation, Inbox/Messaging system, and real-time backend synchronization.
 
-📧 Contact & Support
-For academic inquiries or technical support regarding this project, please reach out via our university emails or GitHub profiles.
+Would you like me to add a **feature-specific breakdown** (like a list of the exact screens for each person) to make it even more detailed for your final submission?
