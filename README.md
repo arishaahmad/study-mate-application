@@ -65,9 +65,3 @@ Faiez Rashid	UI & Collaboration	Dashboard, Help Forum (Real-time), Inbox, Schedu
 Arisha Ahmad: [2751923]
 Faiez Rashid: [2460384]
 
-
-
-
-
-
-Would you like me to add a **feature-specific breakdown** (like a list of the exact screens for each person) to make it even more detailed for your final submission?
