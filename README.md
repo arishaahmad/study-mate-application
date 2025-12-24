@@ -421,8 +421,8 @@ flutter pub outdated
 
 | Name | Student ID | Role | Contact |
 |------|------------|------|---------|
-| **Arisha Ahmad** | 2751923 | Full Stack Developer | [arishaahmad@example.com](mailto:arishaahmad@example.com) |
-| **Faiez Rashid** | 2460384 | Full Stack Developer | [faiezrashid@example.com](mailto:faiezrashid@example.com) |
+| **Arisha Ahmad** | 2751923 | Full Stack Developer | [e275192@metu.edu.tr](mailto:e275192@metu.edu.tr) |
+| **Faiez Rashid** | 2460384 | Full Stack Developer | [e246038@metu.edu.tr](mailto:e246038@metu.edu.tr) |
 
 
 ## Repository Information
@@ -449,8 +449,8 @@ For questions, issues, or contributions:
 
 1. **Open an issue** on GitHub: [Issues Page](https://github.com/arishaahmad/study-mate-application/issues)
 2. **Email the team:**
-   - Arisha Ahmad: arishaahmad@example.com
-   - Faiez Rashid: faiezrashid@example.com
+   - Arisha Ahmad: e275192@metu.edu.tr
+   - Faiez Rashid: e246038@metu.edu.tr
 3. **Review project documentation** in the repository
 
 ---
