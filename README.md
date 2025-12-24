@@ -17,10 +17,7 @@ A comprehensive mobile application designed to help students manage their studie
 - [Configuration](#configuration)
 - [Project Structure](#project-structure)
 - [Running the Application](#running-the-application)
-- [Database Schema](#database-schema)
 - [Feature Implementation Status](#feature-implementation-status)
-- [Development Roadmap](#development-roadmap)
-- [Testing](#testing)
 - [Team Members](#team-members)
 - [License](#license)
 
