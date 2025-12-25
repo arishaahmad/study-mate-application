@@ -71,9 +71,6 @@ A comprehensive mobile application designed to help students manage their studie
 - PDF document upload and viewing
 - File attachment in notes
 - Supabase Storage integration
-- 
-#### 8. **Notifications **
-- Local push notifications
 
 ---
 
@@ -412,7 +409,7 @@ flutter pub outdated
 | **Help Forum** | ✅ Complete | Week 9 | Database schema design, Chat interface implementation |
 | **Notes Module** | ✅ Complete | Week 9 | Text storage, Rich formatting, Cloud sync |
 | **File Uploads** | ✅ Complete | Week 10 | Photo/PDF uploads for Forum and Notes |
-| **Notifications** | ✅ Complete | Week 11 | Local push notifications for Timer and Tasks |
+| **Final Fixes** | ✅ Complete | Week 11 | Went over all features to make any changes or fixes needed |
 
 ---
 
